@@ -1,27 +1,38 @@
 #include <RF24.h>
 #include <SPI.h>
+#define led 2
 
 RF24 radio(9,10);
-const byte rxAddr[6] = "00001";
-int DATA[2];
+const byte addresses[][6] = {"00001","00002"};
+boolean buttonState = 0;
 
 void setup() 
 {
+  pinMode(2,OUTPUT);
   radio.begin();
-  radio.setRetries(15,15);
-  radio.openWritingPipe(rxAddr);
-
-  pinMode(2,INPUT_PULLUP);
-  pinMode(3,INPUT_PULLUP);
-  pinMode(4,INPUT_PULLUP);
+  radio.openWritingPipe(addresses[1]);  //00002
+  radio.openReadingPipe(1,addresses[0]);  //00001
+  radio.setPALevel(RF24_PA_MIN);
 }
 
 void loop() 
 {
-  DATA[0] = digitalRead(2);
-  DATA[1] = digitalRead(3);
-  DATA[2] = digitalRead(4);
-  
-  radio.write(DATA,sizeof(DATA));
-  delay(10);
+  delay(5);
+  radio.stopListening();
+  int potValue = analogRead(A5);
+  int analogValue = map(potValue,0,1023,0,180);
+  radio.write(&analogValue,sizeof(analogValue));
+  delay(5);
+  radio.startListening();
+  while (!radio.available());
+  radio.read(&buttonState,sizeof(buttonState));
+
+  if (buttonState == HIGH)
+  {
+    digitalWrite(led,HIGH);
+  }
+  else
+  {
+    digitalWrite(led,LOW);
+  }
 }

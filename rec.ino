@@ -1,32 +1,39 @@
 #include <RF24.h>
 #include <SPI.h>
+#include <Servo.h>
+#define button 4
 
 RF24 radio(9,10);
-const byte rxAddr[6] = "00001";
-int DATA[3];
+const byte addresses[][6] = {"00001","00002"};
+Servo myServo;
+boolean buttonState = 0;
 
 void setup() 
 {
-  Serial.begin(115200);
+  pinMode(button,INPUT_PULLUP);
+  myServo.attach(5);
   radio.begin();
-  radio.openReadingPipe(0,rxAddr);
-  radio.startListening();
-
-  pinMode(2,OUTPUT);
-  pinMode(3,OUTPUT);
-  pinMode(4,OUTPUT);
+  radio.openWritingPipe(addresses[0]);  //00001
+  radio.openReadingPipe(1,addresses[1]);  //00002
+  radio.setPALevel(RF24_PA_MIN);
+  myServo.write(90);
 }
 
 void loop()
 {
-  while(radio.available())
+  delay(5);
+  radio.startListening();
+  if (radio.available())
   {
-    radio.read(DATA,sizeof(DATA));
-    Serial.println(DATA[1]);
-    Serial.println(DATA[2]);
-    Serial.println(DATA[3]);
-    digitalWrite(2,!DATA[0]);
-    digitalWrite(3,!DATA[1]);
-    digitalWrite(4,!DATA[2]);
+    while (radio.available())
+    {
+      int anglev = 0;
+      radio.read(&anglev,sizeof(anglev));
+      myServo.write(anglev);
+    }
+    delay(5);
+    radio.stopListening();
+    buttonState = digitalRead(button);
+    radio.write(&buttonState,sizeof(buttonState));
   }
 }
